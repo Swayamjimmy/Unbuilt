@@ -1,0 +1,21 @@
+{
+    "Role": {
+        "Path": "/",
+        "RoleName": "ideaforge-lambda-role",
+        "RoleId": "AROARCZMWXR2OPYHD3EA5",
+        "Arn": "arn:aws:iam::074718821492:role/ideaforge-lambda-role",
+        "CreateDate": "2026-07-07T21:30:42+00:00",
+        "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": "lambda.amazonaws.com"
+                    },
+                    "Action": "sts:AssumeRole"
+                }
+            ]
+        }
+    }
+}
