@@ -4,6 +4,10 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from app.agents.state import AgentState
 from app.agents.tools import reddit_search, hackernews_search
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # Initialize Gemini 2.5 Flash for all node functions
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",

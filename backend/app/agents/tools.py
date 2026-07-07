@@ -92,7 +92,7 @@ async def reddit_search(query: str, subreddits: list[str]) -> list[dict]:
         return []
 
 # HackerNews Algolia Search API (free, no auth required)
-HN_SEARCH_URL = "http://hn.algolia.com/api/v1/search"
+HN_SEARCH_URL = "https://hn.algolia.com/api/v1/search"
 
 async def hackernews_search(query: str) -> list[dict]:
     """Search HackerNews for stories matching a query via the Algolia API."""
