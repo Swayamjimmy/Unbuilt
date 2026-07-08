@@ -42,9 +42,9 @@ export default function Navigation() {
 
       {/* Anchor - Saved Voyages */}
       <Link
-        href="/voyages"
+        href="/dashboard"
         className={`p-2 rounded-lg transition-colors ${
-          pathname === '/voyages' ? 'bg-navy-700 text-gold-500' : 'text-gray-400 hover:text-gold-400'
+          pathname === '/dashboard' ? 'bg-navy-700 text-gold-500' : 'text-gray-400 hover:text-gold-400'
         }`}
         title="Saved Voyages"
       >
