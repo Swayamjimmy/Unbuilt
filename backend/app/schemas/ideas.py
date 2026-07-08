@@ -1,11 +1,12 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
 
-# Request model for the idea generation endpoint
+
 class GenerateIdeasRequest(BaseModel):
     interests: list[str]
     tech_stack: list[str]
+    github_url: HttpUrl | None = None
 
-# Response model returned by both endpoints
+
 class IdeaResponse(BaseModel):
     job_id: str
     status: str

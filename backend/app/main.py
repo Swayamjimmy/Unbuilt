@@ -3,8 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 
 from app.routers import ideas
-# Create the FastAPI application
-app = FastAPI(title="Unbuilt API", version="1.0.0")
+
+
+app = FastAPI(
+    title="IdeaForge API",
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -12,13 +15,20 @@ app.add_middleware(
         "http://localhost:3000",
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(
+    ideas.router,
 )
 
 
-# Include endpoint routers
-app.include_router(ideas.router)
+@app.get("/")
+async def root():
+    return {
+        "message": "IdeaForge API",
+    }
 
-# Mangum handler wraps the app for AWS Lambda compatibility
-handler = Mangum(app, lifespan="off")
+
+handler = Mangum(app)

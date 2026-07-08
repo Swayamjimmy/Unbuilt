@@ -1,71 +1,30 @@
-import asyncio
-import traceback
+import json
+import os
 import uuid
 
+import boto3
 from fastapi import APIRouter
 
-from app.agents.graph import run_idea_graph
 from app.schemas.ideas import GenerateIdeasRequest, IdeaResponse
 
 
 router = APIRouter()
 
-# In-memory job store.
-# NOTE: This is okay for local development, but is not reliable
-# across separate AWS Lambda execution environments.
-jobs: dict[str, dict] = {}
+AWS_REGION = os.getenv("AWS_REGION", "ap-south-1")
+JOBS_TABLE_NAME = os.getenv("JOBS_TABLE_NAME", "ideaforge-jobs")
+JOBS_QUEUE_URL = os.getenv("JOBS_QUEUE_URL")
 
+dynamodb = boto3.resource(
+    "dynamodb",
+    region_name=AWS_REGION,
+)
 
-async def run_graph(
-    job_id: str,
-    request: GenerateIdeasRequest,
-):
-    """Run the idea generation graph and update job status."""
+sqs = boto3.client(
+    "sqs",
+    region_name=AWS_REGION,
+)
 
-    try:
-        print("=" * 60)
-        print("STARTING IDEA GRAPH")
-        print(f"JOB ID: {job_id}")
-        print(f"INTERESTS: {request.interests}")
-        print("=" * 60)
-
-        jobs[job_id]["stage"] = "scouting"
-
-        result = await run_idea_graph(
-            user_interests=request.interests,
-        )
-
-        print("=" * 60)
-        print("IDEA GRAPH COMPLETED")
-        print(f"JOB ID: {job_id}")
-        print("=" * 60)
-
-        jobs[job_id]["status"] = "complete"
-        jobs[job_id]["stage"] = "complete"
-        jobs[job_id]["ideas"] = result.get(
-            "final_ideas",
-            [],
-        )
-
-    except Exception as e:
-        error_type = type(e).__name__
-        error_repr = repr(e)
-
-        print("=" * 60)
-        print("IDEA GRAPH FAILED")
-        print(f"JOB ID: {job_id}")
-        print(f"ERROR TYPE: {error_type}")
-        print(f"ERROR REPR: {error_repr}")
-
-        traceback.print_exc()
-
-        print("=" * 60)
-
-        jobs[job_id]["status"] = "error"
-        jobs[job_id]["stage"] = (
-            f"{error_type}: {error_repr}"
-        )
-        jobs[job_id]["ideas"] = None
+jobs_table = dynamodb.Table(JOBS_TABLE_NAME)
 
 
 @router.post(
@@ -75,35 +34,67 @@ async def run_graph(
 async def generate_ideas(
     request: GenerateIdeasRequest,
 ):
-    """Start idea generation and return a job ID."""
-
     job_id = str(uuid.uuid4())
 
-    print("=" * 60)
-    print("NEW IDEA GENERATION REQUEST")
-    print(f"JOB ID: {job_id}")
-    print(f"TECH STACK: {request.tech_stack}")
-    print(f"INTERESTS: {request.interests}")
-    print(f"GITHUB URL: {request.github_url}")
-    print("=" * 60)
+    print(
+        f"CREATING JOB job={job_id}",
+        flush=True,
+    )
 
-    jobs[job_id] = {
-        "status": "running",
-        "stage": "scouting",
-        "ideas": None,
+    jobs_table.put_item(
+        Item={
+            "job_id": job_id,
+            "status": "queued",
+            "stage": "queued",
+        }
+    )
+
+    message = {
+        "job_id": job_id,
+        "interests": request.interests,
+        "tech_stack": request.tech_stack,
+        "github_url": (
+            str(request.github_url)
+            if request.github_url
+            else None
+        ),
     }
 
-    asyncio.create_task(
-        run_graph(
-            job_id=job_id,
-            request=request,
+    try:
+        sqs.send_message(
+            QueueUrl=JOBS_QUEUE_URL,
+            MessageBody=json.dumps(message),
         )
+
+    except Exception:
+        jobs_table.update_item(
+            Key={
+                "job_id": job_id,
+            },
+            UpdateExpression=(
+                "SET #status = :status, "
+                "stage = :stage"
+            ),
+            ExpressionAttributeNames={
+                "#status": "status",
+            },
+            ExpressionAttributeValues={
+                ":status": "error",
+                ":stage": "Failed to queue job",
+            },
+        )
+
+        raise
+
+    print(
+        f"JOB QUEUED job={job_id}",
+        flush=True,
     )
 
     return IdeaResponse(
         job_id=job_id,
-        status="running",
-        stage="scouting",
+        status="queued",
+        stage="queued",
         ideas=None,
     )
 
@@ -115,15 +106,15 @@ async def generate_ideas(
 async def get_status(
     job_id: str,
 ):
-    """Return the current status of an idea generation job."""
+    response = jobs_table.get_item(
+        Key={
+            "job_id": job_id,
+        }
+    )
 
-    job = jobs.get(job_id)
+    job = response.get("Item")
 
     if not job:
-        print(
-            f"JOB NOT FOUND: {job_id}"
-        )
-
         return IdeaResponse(
             job_id=job_id,
             status="not_found",
@@ -132,9 +123,10 @@ async def get_status(
         )
 
     print(
-        f"JOB STATUS: {job_id} "
-        f"status={job['status']} "
-        f"stage={job.get('stage')}"
+        f"JOB STATUS job={job_id} "
+        f"status={job.get('status')} "
+        f"stage={job.get('stage')}",
+        flush=True,
     )
 
     return IdeaResponse(
