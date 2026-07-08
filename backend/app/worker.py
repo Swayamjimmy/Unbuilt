@@ -6,15 +6,31 @@ import traceback
 import boto3
 
 
-AWS_REGION = os.getenv("AWS_REGION", "ap-south-1")
-JOBS_TABLE_NAME = os.getenv("JOBS_TABLE_NAME", "ideaforge-jobs")
+AWS_REGION = os.getenv(
+    "AWS_REGION",
+    "ap-south-1",
+)
+
+JOBS_TABLE_NAME = os.getenv(
+    "JOBS_TABLE_NAME",
+    "ideaforge-jobs",
+)
+
 
 dynamodb = boto3.resource(
     "dynamodb",
     region_name=AWS_REGION,
 )
 
-jobs_table = dynamodb.Table(JOBS_TABLE_NAME)
+jobs_table = dynamodb.Table(
+    JOBS_TABLE_NAME
+)
+
+
+# Persistent event loop for warm Lambda invocations
+event_loop = asyncio.new_event_loop()
+
+asyncio.set_event_loop(event_loop)
 
 
 def update_job(
@@ -39,6 +55,7 @@ def update_job(
 
     if ideas is not None:
         expression += ", ideas = :ideas"
+
         values[":ideas"] = ideas
 
     jobs_table.update_item(
@@ -55,13 +72,36 @@ async def process_job(
     message: dict,
 ):
     job_id = message["job_id"]
-    interests = message.get("interests", [])
 
-    print("=" * 60, flush=True)
-    print("WORKER START", flush=True)
-    print(f"JOB ID: {job_id}", flush=True)
-    print(f"INTERESTS: {interests}", flush=True)
-    print("=" * 60, flush=True)
+    interests = message.get(
+        "interests",
+        [],
+    )
+
+    print(
+        "=" * 60,
+        flush=True,
+    )
+
+    print(
+        "WORKER START",
+        flush=True,
+    )
+
+    print(
+        f"JOB ID: {job_id}",
+        flush=True,
+    )
+
+    print(
+        f"INTERESTS: {interests}",
+        flush=True,
+    )
+
+    print(
+        "=" * 60,
+        flush=True,
+    )
 
     try:
         update_job(
@@ -70,10 +110,13 @@ async def process_job(
             stage="scouting",
         )
 
-        from app.agents.graph import run_idea_graph
+        from app.agents.graph import (
+            run_idea_graph,
+        )
 
         print(
-            f"GRAPH IMPORT COMPLETE job={job_id}",
+            f"GRAPH IMPORT COMPLETE "
+            f"job={job_id}",
             flush=True,
         )
 
@@ -102,21 +145,43 @@ async def process_job(
 
     except Exception as error:
         error_type = type(error).__name__
-        error_message = str(error)
+
+        error_message = (
+            str(error)
+            or repr(error)
+        )
 
         full_error = (
             f"{error_type}: "
-            f"{error_message or repr(error)}"
+            f"{error_message}"
         )
 
-        print("=" * 60, flush=True)
-        print("WORKER FAILED", flush=True)
-        print(f"JOB ID: {job_id}", flush=True)
-        print(f"ERROR: {full_error}", flush=True)
+        print(
+            "=" * 60,
+            flush=True,
+        )
+
+        print(
+            "WORKER FAILED",
+            flush=True,
+        )
+
+        print(
+            f"JOB ID: {job_id}",
+            flush=True,
+        )
+
+        print(
+            f"ERROR: {full_error}",
+            flush=True,
+        )
 
         traceback.print_exc()
 
-        print("=" * 60, flush=True)
+        print(
+            "=" * 60,
+            flush=True,
+        )
 
         update_job(
             job_id=job_id,
@@ -130,25 +195,37 @@ async def process_job(
 async def process_records(
     event: dict,
 ):
-    for record in event.get("Records", []):
+    records = event.get(
+        "Records",
+        [],
+    )
+
+    for record in records:
         message = json.loads(
             record["body"]
         )
 
-        await process_job(message)
+        await process_job(
+            message
+        )
 
 
 def handler(
     event,
     context,
 ):
+    records = event.get(
+        "Records",
+        [],
+    )
+
     print(
-        f"SQS EVENT records="
-        f"{len(event.get('Records', []))}",
+        f"SQS EVENT "
+        f"records={len(records)}",
         flush=True,
     )
 
-    asyncio.run(
+    event_loop.run_until_complete(
         process_records(event)
     )
 
