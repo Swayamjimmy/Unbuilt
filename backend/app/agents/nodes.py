@@ -1,53 +1,199 @@
-import os
 import json
+import os
+from typing import Any
+
+from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
+
 from app.agents.state import AgentState
 from app.agents.tools import reddit_search, hackernews_search
 
-from dotenv import load_dotenv
 
 load_dotenv()
 
-# Initialize Gemini 2.5 Flash for all node functions
+
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
-    api_key=os.getenv("GEMINI_API_KEY")
+    api_key=os.getenv("GEMINI_API_KEY"),
+    temperature=0.4,
 )
 
-async def scout_node(state: AgentState) -> AgentState:
-    """Generate dynamic search queries and select subreddits based on user input."""
-    # Build a prompt that asks Gemini to create targeted search queries
-    prompt = (
-        f"Based on these user interests: {state['user_interests']}\n\n"
-        "Generate 5 specific search queries to find project ideas and demand signals "
-        "on Reddit and HackerNews. Also suggest 3-5 relevant subreddits to search.\n\n"
-        "Return valid JSON with this format:\n"
-        '{"queries": ["query1", "query2"], "subreddits": ["subreddit1", "subreddit2"]}'
+
+def build_search_queries(
+    interests: list[str],
+) -> list[str]:
+    """
+    Generate targeted search queries without using Gemini.
+    """
+
+    queries: list[str] = []
+
+    for interest in interests[:5]:
+        interest = interest.strip()
+
+        if not interest:
+            continue
+
+        queries.extend(
+            [
+                f"{interest} frustrating problem",
+                f"{interest} tool wish existed",
+                f"{interest} repetitive workflow",
+            ]
+        )
+
+    # Remove duplicates while preserving order.
+    return list(dict.fromkeys(queries))[:8]
+
+
+def select_subreddits(
+    interests: list[str],
+) -> list[str]:
+    """
+    Select relevant subreddits using a lightweight keyword map.
+    """
+
+    subreddit_map = {
+        "ai": [
+            "artificial",
+            "MachineLearning",
+            "LocalLLaMA",
+        ],
+        "machine learning": [
+            "MachineLearning",
+            "learnmachinelearning",
+        ],
+        "python": [
+            "Python",
+            "learnpython",
+        ],
+        "web": [
+            "webdev",
+            "Frontend",
+        ],
+        "frontend": [
+            "Frontend",
+            "webdev",
+        ],
+        "backend": [
+            "Backend",
+            "webdev",
+        ],
+        "devops": [
+            "devops",
+            "kubernetes",
+        ],
+        "cloud": [
+            "aws",
+            "cloudcomputing",
+        ],
+        "aws": [
+            "aws",
+            "devops",
+        ],
+        "product": [
+            "SaaS",
+            "Entrepreneur",
+            "startups",
+        ],
+        "startup": [
+            "startups",
+            "Entrepreneur",
+        ],
+        "developer tools": [
+            "programming",
+            "webdev",
+            "ExperiencedDevs",
+        ],
+    }
+
+    selected: list[str] = []
+
+    for interest in interests:
+        normalized = interest.lower().strip()
+
+        for keyword, subreddits in subreddit_map.items():
+            if keyword in normalized or normalized in keyword:
+                selected.extend(subreddits)
+
+    if not selected:
+        selected = [
+            "programming",
+            "webdev",
+            "SideProject",
+        ]
+
+    return list(dict.fromkeys(selected))[:5]
+
+
+async def scout_node(
+    state: AgentState,
+) -> AgentState:
+    """
+    Generate search queries and collect community discussions.
+
+    No Gemini request is made in this node.
+    """
+
+    interests = state["user_interests"]
+
+    queries = build_search_queries(
+        interests
     )
 
-    # Ask Gemini to generate search queries from user interests
-    response = await llm.ainvoke(prompt)
+    subreddits = select_subreddits(
+        interests
+    )
 
-    # Parse the generated queries from Gemini's response
-    try:
-        content = response.content
-        start = content.find("{")
-        end = content.rfind("}") + 1
-        data = json.loads(content[start:end])
-        queries = data.get("queries", [])
-        subreddits = data.get("subreddits", ["python", "webdev", "learnprogramming"])
-    except (json.JSONDecodeError, ValueError):
-        # Fallback: create basic queries from interests directly
-        queries = [f"{interest} project ideas" for interest in state["user_interests"]]
-        subreddits = ["python", "webdev", "learnprogramming"]
+    print(
+        f"SCOUT queries={len(queries)} "
+        f"subreddits={subreddits}",
+        flush=True,
+    )
 
-    # Execute searches across Reddit and HackerNews with generated queries
-    raw_findings = []
+    raw_findings: list[dict[str, Any]] = []
+
     for query in queries:
-        reddit_results = await reddit_search(query, subreddits)
-        hn_results = await hackernews_search(query)
-        raw_findings.extend(reddit_results)
-        raw_findings.extend(hn_results)
+        try:
+            reddit_results = await reddit_search(
+                query,
+                subreddits,
+            )
+
+            raw_findings.extend(
+                reddit_results
+            )
+
+        except Exception as error:
+            print(
+                f"REDDIT SEARCH FAILED "
+                f"query={query} "
+                f"error={error}",
+                flush=True,
+            )
+
+        try:
+            hn_results = await hackernews_search(
+                query
+            )
+
+            raw_findings.extend(
+                hn_results
+            )
+
+        except Exception as error:
+            print(
+                f"HN SEARCH FAILED "
+                f"query={query} "
+                f"error={error}",
+                flush=True,
+            )
+
+    print(
+        f"SCOUT COMPLETE "
+        f"findings={len(raw_findings)}",
+        flush=True,
+    )
 
     return {
         **state,
@@ -55,78 +201,276 @@ async def scout_node(state: AgentState) -> AgentState:
         "raw_findings": raw_findings,
     }
 
-async def analyst_node(state: AgentState) -> AgentState:
-    """Score and filter raw findings for demand signals, pain points, and feasibility."""
-    # Limit findings to avoid exceeding token limits
-    findings_text = json.dumps(state["raw_findings"][:50], indent=2)
 
-    # Build a prompt asking Gemini to analyze and score each finding
-    prompt = (
-        "Analyze these community discussions and score them for:\n"
-        "1. Demand signal strength (are people asking for this?)\n"
-        "2. Pain points mentioned\n"
-        "3. Feasibility for a solo developer\n\n"
-        f"Discussions:\n{findings_text}\n\n"
-        "Return a valid JSON array of analyzed signals:\n"
-        '[{"title": "...", "source": "...", "demand_score": 1-10, '
-        '"pain_points": ["..."], "feasibility": "high/medium/low", "summary": "..."}]'
+def calculate_demand_score(
+    finding: dict,
+) -> int:
+    """
+    Estimate demand strength using textual community signals.
+    """
+
+    text = " ".join(
+        str(value)
+        for value in finding.values()
+        if value is not None
+    ).lower()
+
+    score = 3
+
+    strong_signals = [
+        "wish there was",
+        "wish there were",
+        "looking for",
+        "need a tool",
+        "need something",
+        "does anyone know",
+        "is there a",
+        "alternative to",
+        "frustrating",
+        "annoying",
+        "painful",
+        "hate",
+        "problem",
+        "struggle",
+        "difficult",
+        "manual",
+        "repetitive",
+        "takes forever",
+    ]
+
+    medium_signals = [
+        "how do you",
+        "how can i",
+        "workflow",
+        "automate",
+        "better way",
+        "solution",
+        "tool",
+        "manage",
+        "track",
+    ]
+
+    for signal in strong_signals:
+        if signal in text:
+            score += 2
+
+    for signal in medium_signals:
+        if signal in text:
+            score += 1
+
+    return min(score, 10)
+
+
+def extract_summary(
+    finding: dict,
+) -> str:
+    """
+    Extract a short textual summary from a finding.
+    """
+
+    for key in [
+        "snippet",
+        "text",
+        "body",
+        "description",
+        "title",
+    ]:
+        value = finding.get(key)
+
+        if value:
+            return str(value)[:500]
+
+    return ""
+
+
+async def analyst_node(
+    state: AgentState,
+) -> AgentState:
+    """
+    Score community findings using deterministic heuristics.
+
+    No Gemini request is made in this node.
+    """
+
+    analyzed_signals = []
+
+    for finding in state["raw_findings"][:50]:
+        demand_score = calculate_demand_score(
+            finding
+        )
+
+        if demand_score < 5:
+            continue
+
+        analyzed_signals.append(
+            {
+                "title": finding.get(
+                    "title",
+                    "Community discussion",
+                ),
+                "source": finding.get(
+                    "source",
+                    "unknown",
+                ),
+                "url": finding.get(
+                    "url",
+                    "",
+                ),
+                "demand_score": demand_score,
+                "summary": extract_summary(
+                    finding
+                ),
+            }
+        )
+
+    analyzed_signals.sort(
+        key=lambda signal: signal[
+            "demand_score"
+        ],
+        reverse=True,
     )
 
-    # Ask Gemini to score and categorize the raw findings
-    response = await llm.ainvoke(prompt)
+    top_signals = analyzed_signals[:15]
 
-    # Parse the analyzed signals from Gemini's response
-    try:
-        content = response.content
-        start = content.find("[")
-        end = content.rfind("]") + 1
-        analyzed_signals = json.loads(content[start:end])
-    except (json.JSONDecodeError, ValueError):
-        analyzed_signals = []
-
-    # Filter to keep only high-demand signals (score 6 or above)
-    filtered_signals = [
-        signal for signal in analyzed_signals
-        if signal.get("demand_score", 0) >= 6
-    ]
+    print(
+        f"ANALYST COMPLETE "
+        f"signals={len(top_signals)}",
+        flush=True,
+    )
 
     return {
         **state,
-        "analyzed_signals": filtered_signals if filtered_signals else analyzed_signals[:10],
+        "analyzed_signals": top_signals,
     }
 
-async def architect_node(state: AgentState) -> AgentState:
-    """Synthesize filtered signals and user skills into actionable project ideas."""
-    # Prepare the analyzed signals for the prompt
-    signals_text = json.dumps(state["analyzed_signals"], indent=2)
 
-    # Build a prompt asking Gemini to create concrete project ideas
-    prompt = (
-        f"Based on these validated demand signals:\n{signals_text}\n\n"
-        f"And the user's skills/interests: {state['user_interests']}\n\n"
-        "Generate 3-5 concrete, actionable project ideas. Each idea must:\n"
-        "- Solve a real pain point from the signals\n"
-        "- Match the user's skill level\n"
-        "- Include evidence from the community discussions\n"
-        "- Be buildable by a solo developer in 2-8 weeks\n\n"
-        "Return a valid JSON array:\n"
-        '[{"title": "...", "description": "...", "pain_point": "...", '
-        '"evidence": [{"source": "...", "quote": "..."}], '
-        '"tech_stack": ["..."], "difficulty": "beginner/intermediate/advanced", '
-        '"estimated_weeks": 4, "why_this_matches": "..."}]'
+async def architect_node(
+    state: AgentState,
+) -> AgentState:
+    """
+    Use Gemini once to synthesize validated community signals
+    into concrete project ideas.
+    """
+
+    signals = state[
+        "analyzed_signals"
+    ][:15]
+
+    signals_text = json.dumps(
+        signals,
+        ensure_ascii=False,
     )
 
-    # Ask Gemini to synthesize ideas from signals and user profile
-    response = await llm.ainvoke(prompt)
+    interests_text = json.dumps(
+        state["user_interests"],
+        ensure_ascii=False,
+    )
 
-    # Parse the final project ideas from Gemini's response
+    prompt = f"""
+You are a senior product engineer identifying strong software
+portfolio project opportunities.
+
+USER INTERESTS:
+{interests_text}
+
+VALIDATED COMMUNITY SIGNALS:
+{signals_text}
+
+Generate exactly 4 concrete software project ideas.
+
+Requirements:
+
+1. Each project must solve a pain point visible in the community
+   signals.
+
+2. The project must be realistic for one developer to build in
+   2-8 weeks.
+
+3. Avoid generic ideas such as:
+   - todo apps
+   - chat apps
+   - weather apps
+   - generic AI wrappers
+
+4. Prefer technically interesting systems involving:
+   - AI
+   - backend engineering
+   - infrastructure
+   - developer tools
+   - distributed systems
+   when relevant to the user's interests.
+
+5. Evidence must reference the supplied community signals only.
+   Never invent a Reddit or Hacker News URL.
+
+6. Return ONLY valid JSON.
+
+Return this exact JSON structure:
+
+[
+  {{
+    "title": "Project title",
+    "description": "Clear explanation of the product",
+    "pain_point": "Specific problem being solved",
+    "evidence": [
+      {{
+        "source": "reddit or hackernews",
+        "title": "Discussion title",
+        "url": "Original discussion URL",
+        "snippet": "Short evidence summary"
+      }}
+    ],
+    "tech_stack": [
+      "technology"
+    ],
+    "difficulty": "beginner or intermediate or advanced",
+    "estimated_weeks": 4,
+    "why_this_matches": "Why this matches the user"
+  }}
+]
+"""
+
+    print(
+        "ARCHITECT CALLING GEMINI",
+        flush=True,
+    )
+
+    response = await llm.ainvoke(
+        prompt
+    )
+
     try:
-        content = response.content
+        content = str(response.content)
+
         start = content.find("[")
         end = content.rfind("]") + 1
-        final_ideas = json.loads(content[start:end])
-    except (json.JSONDecodeError, ValueError):
+
+        if start == -1 or end == 0:
+            raise ValueError(
+                "Gemini response contained no JSON array"
+            )
+
+        final_ideas = json.loads(
+            content[start:end]
+        )
+
+    except (
+        json.JSONDecodeError,
+        ValueError,
+    ) as error:
+        print(
+            f"ARCHITECT PARSE FAILED "
+            f"error={error}",
+            flush=True,
+        )
+
         final_ideas = []
+
+    print(
+        f"ARCHITECT COMPLETE "
+        f"ideas={len(final_ideas)}",
+        flush=True,
+    )
 
     return {
         **state,
