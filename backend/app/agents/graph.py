@@ -1,69 +1,170 @@
-from typing import Literal
-
-from langgraph.graph import StateGraph, START, END
+from langgraph.graph import (
+    StateGraph,
+    START,
+    END,
+)
 
 from app.agents.state import AgentState
-from app.agents.nodes import scout_node, analyst_node, architect_node
 
-# Minimum number of analyzed signals before proceeding to Architect
-MIN_SIGNALS_THRESHOLD = 3
-
-
-def should_reflect(state: AgentState) -> Literal["scout", "architect"]:
-    """Route back to Scout if Analyst found too few demand signals."""
-    signals = state.get("analyzed_signals", [])
-    if len(signals) < MIN_SIGNALS_THRESHOLD:
-        return "scout"
-    return "architect"
+from app.agents.nodes import (
+    scout_node,
+    analyst_node,
+    architect_node,
+)
 
 
 def build_graph() -> StateGraph:
-    """Assemble the multi-agent graph with conditional reflection."""
-    # Initialize the graph with our shared state schema
-    graph = StateGraph(AgentState)
+    """
+    Build the idea generation pipeline.
 
-    # Register each agent as a named node
-    graph.add_node("scout", scout_node)
-    graph.add_node("analyst", analyst_node)
-    graph.add_node("architect", architect_node)
+    Flow:
 
-    # Define the flow: START -> Scout -> Analyst
-    graph.add_edge(START, "scout")
-    graph.add_edge("scout", "analyst")
+    START
+      |
+      v
+    scout
+      |
+      v
+    analyst
+      |
+      v
+    architect
+      |
+      v
+    END
 
-    # Conditional edge: Analyst decides next step based on signal quality
-    graph.add_conditional_edges(
-        "analyst",
-        should_reflect,
-        {"scout": "scout", "architect": "architect"},
+    Scout and Analyst are deterministic.
+
+    Re-running them with the same state would produce the
+    same results and create an infinite LangGraph cycle.
+
+    Architect is allowed to handle a small number of signals.
+    """
+
+    graph = StateGraph(
+        AgentState
     )
 
-    # Architect is the final node
-    graph.add_edge("architect", END)
+
+    graph.add_node(
+        "scout",
+        scout_node,
+    )
+
+    graph.add_node(
+        "analyst",
+        analyst_node,
+    )
+
+    graph.add_node(
+        "architect",
+        architect_node,
+    )
+
+
+    graph.add_edge(
+        START,
+        "scout",
+    )
+
+    graph.add_edge(
+        "scout",
+        "analyst",
+    )
+
+    graph.add_edge(
+        "analyst",
+        "architect",
+    )
+
+    graph.add_edge(
+        "architect",
+        END,
+    )
+
 
     return graph
 
 
-# Compile the graph into a runnable
-idea_graph = build_graph().compile()
+idea_graph = (
+    build_graph()
+    .compile()
+)
 
-# Maximum graph transitions allowed per run
-RECURSION_LIMIT = 10
 
+async def run_idea_graph(
+    user_interests: list[str],
+) -> dict:
+    """
+    Execute the idea generation graph.
+    """
 
-async def run_idea_graph(user_interests: list[str]) -> dict:
-    """Execute the idea generation graph with safety limits."""
     initial_state: AgentState = {
-        "user_interests": user_interests,
-        "search_queries": [],
-        "raw_findings": [],
-        "analyzed_signals": [],
-        "final_ideas": [],
+        "user_interests":
+            user_interests,
+
+        "search_queries":
+            [],
+
+        "raw_findings":
+            [],
+
+        "analyzed_signals":
+            [],
+
+        "final_ideas":
+            [],
     }
 
-    # Pass recursion_limit in the config to prevent runaway loops
+
+    print(
+        "STARTING IDEA GRAPH",
+        flush=True,
+    )
+
+    print(
+        f"INTERESTS: "
+        f"{user_interests}",
+        flush=True,
+    )
+
+
     result = await idea_graph.ainvoke(
         initial_state,
-        {"recursion_limit": RECURSION_LIMIT},
+        {
+            "recursion_limit": 10,
+        },
     )
+
+
+    print(
+        "IDEA GRAPH COMPLETE",
+        flush=True,
+    )
+
+    print(
+        f"SEARCH QUERIES: "
+        f"{len(result.get('search_queries', []))}",
+        flush=True,
+    )
+
+    print(
+        f"RAW FINDINGS: "
+        f"{len(result.get('raw_findings', []))}",
+        flush=True,
+    )
+
+    print(
+        f"ANALYZED SIGNALS: "
+        f"{len(result.get('analyzed_signals', []))}",
+        flush=True,
+    )
+
+    print(
+        f"FINAL IDEAS: "
+        f"{len(result.get('final_ideas', []))}",
+        flush=True,
+    )
+
+
     return result
