@@ -1,65 +1,320 @@
-'use client'
+"use client";
 
-import { createClient } from '@supabase/supabase-js'
+import { useEffect, useState } from "react";
+import type { User } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 
-// Initialize the Supabase client for authentication
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-)
 
 export default function Home() {
-  // Trigger Google OAuth sign-in via Supabase
+  const [user, setUser] =
+    useState<User | null>(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [authError, setAuthError] =
+    useState<string | null>(null);
+
+
+  useEffect(() => {
+    async function loadSession() {
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+
+
+      if (error) {
+        console.error(
+          "SESSION ERROR:",
+          error
+        );
+
+        setAuthError(error.message);
+      }
+
+
+      console.log(
+        "CURRENT SESSION:",
+        session
+      );
+
+
+      setUser(
+        session?.user ?? null
+      );
+
+      setLoading(false);
+    }
+
+
+    loadSession();
+
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log(
+          "AUTH EVENT:",
+          event
+        );
+
+        console.log(
+          "AUTH SESSION:",
+          session
+        );
+
+
+        setUser(
+          session?.user ?? null
+        );
+
+        setLoading(false);
+      }
+    );
+
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+
   const handleSignIn = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/discover`,
-      },
-    })
+    setAuthError(null);
+
+
+    const { error } =
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+
+        options: {
+          redirectTo:
+            `${window.location.origin}/`,
+        },
+      });
+
+
+    if (error) {
+      console.error(
+        "GOOGLE OAUTH ERROR:",
+        error
+      );
+
+      setAuthError(error.message);
+    }
+  };
+
+
+  const handleSignOut = async () => {
+    setAuthError(null);
+
+
+    const { error } =
+      await supabase.auth.signOut();
+
+
+    if (error) {
+      console.error(
+        "SIGN OUT ERROR:",
+        error
+      );
+
+      setAuthError(error.message);
+
+      return;
+    }
+
+
+    setUser(null);
+  };
+
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+
+        <p className="text-gray-400">
+          Loading...
+        </p>
+
+      </div>
+    );
   }
+
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-4">
-      {/* Brand identity section */}
+
       <div className="text-center mb-12">
-        {/* Compass rose hero icon */}
+
         <div className="inline-block text-gold-500 mb-6">
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-20 h-20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-            <circle cx="12" cy="12" r="10" />
-            <polygon points="12 2 14 10 12 12 10 10 12 2" fill="currentColor" />
-            <polygon points="22 12 14 14 12 12 14 10 22 12" fill="currentColor" />
-            <polygon points="12 22 10 14 12 12 14 14 12 22" fill="currentColor" />
-            <polygon points="2 12 10 10 12 12 10 14 2 12" fill="currentColor" />
+
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-20 h-20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1"
+          >
+
+            <circle
+              cx="12"
+              cy="12"
+              r="10"
+            />
+
+            <polygon
+              points="12 2 14 10 12 12 10 10 12 2"
+              fill="currentColor"
+            />
+
+            <polygon
+              points="22 12 14 14 12 12 14 10 22 12"
+              fill="currentColor"
+            />
+
+            <polygon
+              points="12 22 10 14 12 12 14 14 12 22"
+              fill="currentColor"
+            />
+
+            <polygon
+              points="2 12 10 10 12 12 10 14 2 12"
+              fill="currentColor"
+            />
+
           </svg>
+
         </div>
 
+
         <h1 className="text-5xl font-bold text-white mb-4">
-          Idea<span className="text-gold-500">Forge</span>
+
+          Idea
+
+          <span className="text-gold-500">
+            Forge
+          </span>
+
         </h1>
+
+
         <p className="text-xl text-gray-400 max-w-md">
-          Chart your course to the next great project. AI-powered discovery from real community signals.
+
+          Chart your course to the next great
+          project. AI-powered discovery from
+          real community signals.
+
         </p>
+
       </div>
 
-      {/* Google sign-in button */}
-      <button
-        onClick={handleSignIn}
-        className="flex items-center gap-3 bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold px-8 py-3 rounded-lg transition-colors"
-      >
-        <svg className="w-5 h-5" viewBox="0 0 24 24">
-          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-        </svg>
-        Sign in with Google
-      </button>
 
-      {/* Tagline footer */}
+      {user ? (
+
+        <div className="flex flex-col items-center gap-4">
+
+          <p className="text-gray-300">
+
+            Signed in as{" "}
+
+            <span className="text-gold-400">
+              {user.email}
+            </span>
+
+          </p>
+
+
+          <a
+            href="/discover"
+
+            className="bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold px-8 py-3 rounded-lg transition-colors"
+          >
+            Discover Ideas
+          </a>
+
+
+          <a
+            href="/profile"
+
+            className="text-gold-400 hover:text-gold-300"
+          >
+            Edit Profile
+          </a>
+
+
+          <button
+            onClick={handleSignOut}
+
+            className="text-sm text-gray-400 hover:text-white"
+          >
+            Sign out
+          </button>
+
+        </div>
+
+      ) : (
+
+        <button
+          onClick={handleSignIn}
+
+          className="flex items-center gap-3 bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold px-8 py-3 rounded-lg transition-colors"
+        >
+
+          <svg
+            className="w-5 h-5"
+            viewBox="0 0 24 24"
+          >
+
+            <path
+              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              fill="#4285F4"
+            />
+
+            <path
+              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              fill="#34A853"
+            />
+
+            <path
+              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+              fill="#FBBC05"
+            />
+
+            <path
+              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+              fill="#EA4335"
+            />
+
+          </svg>
+
+
+          Sign in with Google
+
+        </button>
+
+      )}
+
+
+      {authError && (
+
+        <p className="mt-4 text-red-400 text-sm">
+          {authError}
+        </p>
+
+      )}
+
+
       <p className="mt-8 text-sm text-gray-500">
-        Discover validated project ideas backed by real community demand.
+
+        Discover validated project ideas
+        backed by real community demand.
+
       </p>
+
     </div>
-  )
+  );
 }
