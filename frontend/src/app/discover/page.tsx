@@ -13,43 +13,77 @@ import {
   IdeaResult,
 } from "@/lib/api";
 
+import {
+  supabase,
+} from "@/lib/supabase";
+
 
 const STAGE_LABELS: Record<string, string> = {
-  scouting: "Scouting the seas for signals...",
-  analyzing: "Analyzing discoveries...",
-  architecting: "Forging your ideas...",
-  complete: "Ideas forged successfully.",
+  scouting:
+    "Scouting the seas for signals...",
+
+  analyzing:
+    "Analyzing discoveries...",
+
+  architecting:
+    "Forging your ideas...",
+
+  complete:
+    "Ideas forged successfully.",
 };
 
 
 export default function DiscoverPage() {
-  const [techStack, setTechStack] =
-    useState<string[]>([]);
+  const [
+    techStack,
+    setTechStack,
+  ] = useState<string[]>([]);
 
-  const [tagInput, setTagInput] =
-    useState("");
+  const [
+    tagInput,
+    setTagInput,
+  ] = useState("");
 
-  const [interests, setInterests] =
-    useState("");
+  const [
+    interests,
+    setInterests,
+  ] = useState("");
 
-  const [githubUrl, setGithubUrl] =
-    useState("");
+  const [
+    githubUrl,
+    setGithubUrl,
+  ] = useState("");
 
 
-  const [jobId, setJobId] =
-    useState<string | null>(null);
+  const [
+    jobId,
+    setJobId,
+  ] = useState<string | null>(null);
 
-  const [status, setStatus] =
-    useState<JobStatus | null>(null);
+  const [
+    status,
+    setStatus,
+  ] = useState<JobStatus | null>(null);
 
-  const [isPolling, setIsPolling] =
-    useState(false);
+  const [
+    isPolling,
+    setIsPolling,
+  ] = useState(false);
 
-  const [results, setResults] =
-    useState<IdeaResult[] | null>(null);
+  const [
+    results,
+    setResults,
+  ] = useState<IdeaResult[] | null>(null);
 
-  const [error, setError] =
-    useState<string | null>(null);
+  const [
+    error,
+    setError,
+  ] = useState<string | null>(null);
+
+  const [
+    voyageSaved,
+    setVoyageSaved,
+  ] = useState(false);
 
 
   const handleAddTag = (
@@ -62,9 +96,13 @@ export default function DiscoverPage() {
       e.preventDefault();
 
       const tag =
-        tagInput.trim().toLowerCase();
+        tagInput
+          .trim()
+          .toLowerCase();
 
-      if (!techStack.includes(tag)) {
+      if (
+        !techStack.includes(tag)
+      ) {
         setTechStack([
           ...techStack,
           tag,
@@ -81,9 +119,99 @@ export default function DiscoverPage() {
   ) => {
     setTechStack(
       techStack.filter(
-        (item) => item !== tag
+        (item) =>
+          item !== tag
       )
     );
+  };
+
+
+  const getInterests = () => {
+    return interests
+      .split(",")
+      .map(
+        (interest) =>
+          interest.trim()
+      )
+      .filter(Boolean);
+  };
+
+
+  const saveVoyage = async (
+    ideas: IdeaResult[]
+  ) => {
+    console.log(
+      "ATTEMPTING TO SAVE VOYAGE"
+    );
+
+
+    const {
+      data: { user },
+      error: authError,
+    } =
+      await supabase.auth.getUser();
+
+
+    if (
+      authError
+      || !user
+    ) {
+      console.error(
+        "VOYAGE AUTH ERROR:",
+        authError
+      );
+
+      throw new Error(
+        "You must be logged in to save this voyage."
+      );
+    }
+
+
+    console.log(
+      "SAVING VOYAGE FOR USER:",
+      user.id
+    );
+
+
+    const {
+      data,
+      error: voyageError,
+    } =
+      await supabase
+        .from("voyages")
+        .insert({
+          user_id: user.id,
+
+          interests:
+            getInterests(),
+
+          results: ideas,
+        })
+        .select()
+        .single();
+
+
+    console.log(
+      "VOYAGE SAVE DATA:",
+      data
+    );
+
+    console.log(
+      "VOYAGE SAVE ERROR:",
+      voyageError
+    );
+
+
+    if (voyageError) {
+      throw new Error(
+        `${voyageError.code}: ${voyageError.message}`
+      );
+    }
+
+
+    setVoyageSaved(true);
+
+    return data;
   };
 
 
@@ -92,23 +220,24 @@ export default function DiscoverPage() {
   ) => {
     e.preventDefault();
 
+
     setError(null);
     setResults(null);
     setStatus(null);
+    setVoyageSaved(false);
 
-    const request: GenerateIdeasRequest = {
+
+    const request:
+      GenerateIdeasRequest = {
+
       tech_stack: techStack,
 
-      interests: interests
-        .split(",")
-        .map(
-          (interest) =>
-            interest.trim()
-        )
-        .filter(Boolean),
+      interests:
+        getInterests(),
 
       ...(githubUrl.trim() && {
-        github_url: githubUrl.trim(),
+        github_url:
+          githubUrl.trim(),
       }),
     };
 
@@ -125,19 +254,32 @@ export default function DiscoverPage() {
           request
         );
 
+
       console.log(
         "JOB CREATED:",
         response
       );
 
-      setJobId(response.job_id);
+
+      setJobId(
+        response.job_id
+      );
+
 
       setStatus({
-        job_id: response.job_id,
-        status: response.status,
-        stage: response.stage,
-        ideas: response.ideas,
+        job_id:
+          response.job_id,
+
+        status:
+          response.status,
+
+        stage:
+          response.stage,
+
+        ideas:
+          response.ideas,
       });
+
 
       setIsPolling(true);
 
@@ -146,6 +288,7 @@ export default function DiscoverPage() {
         "GENERATION ERROR:",
         err
       );
+
 
       setError(
         err instanceof Error
@@ -165,55 +308,146 @@ export default function DiscoverPage() {
     }
 
 
+    let savingVoyage = false;
+
+
     const interval =
       setInterval(
-async () => {
-  try {
-    const jobStatus = await pollJobStatus(jobId);
+        async () => {
+          try {
+            const jobStatus =
+              await pollJobStatus(
+                jobId
+              );
 
-    console.log("JOB STATUS:", jobStatus);
 
-    setStatus(jobStatus);
+            console.log(
+              "JOB STATUS:",
+              jobStatus
+            );
 
-    // Show ideas if the backend provides any.
-    if (jobStatus.ideas) {
-      setResults(jobStatus.ideas);
-    }
 
-    if (jobStatus.status === "complete") {
-      setResults(jobStatus.ideas || []);
-      setIsPolling(false);
-      return;
-    }
+            setStatus(
+              jobStatus
+            );
 
-    if (jobStatus.status === "error") {
-      setError(
-        jobStatus.stage || "Idea generation failed."
+
+            if (
+              jobStatus.ideas
+            ) {
+              setResults(
+                jobStatus.ideas
+              );
+            }
+
+
+            if (
+              jobStatus.status
+              === "complete"
+            ) {
+              const finalIdeas =
+                jobStatus.ideas
+                || [];
+
+
+              setResults(
+                finalIdeas
+              );
+
+
+              if (
+                !savingVoyage
+                && !voyageSaved
+              ) {
+                savingVoyage = true;
+
+
+                try {
+                  await saveVoyage(
+                    finalIdeas
+                  );
+
+                  console.log(
+                    "VOYAGE SAVED SUCCESSFULLY"
+                  );
+
+                } catch (
+                  saveError
+                ) {
+                  console.error(
+                    "VOYAGE SAVE FAILED:",
+                    saveError
+                  );
+
+
+                  setError(
+                    saveError
+                      instanceof Error
+
+                      ? `Ideas generated, but voyage was not saved: ${saveError.message}`
+
+                      : "Ideas generated, but voyage was not saved."
+                  );
+                }
+              }
+
+
+              setIsPolling(false);
+
+              return;
+            }
+
+
+            if (
+              jobStatus.status
+              === "error"
+            ) {
+              setError(
+                jobStatus.stage
+                || "Idea generation failed."
+              );
+
+
+              setIsPolling(false);
+
+              return;
+            }
+
+
+            if (
+              jobStatus.status
+              === "not_found"
+            ) {
+              setError(
+                "Job was not found."
+              );
+
+
+              setIsPolling(false);
+
+              return;
+            }
+
+          } catch (err) {
+            console.error(
+              "POLLING ERROR:",
+              err
+            );
+
+
+            setError(
+              err instanceof Error
+                ? err.message
+                : "Lost connection to server."
+            );
+
+
+            setIsPolling(false);
+          }
+        },
+
+        1500
       );
-
-      setIsPolling(false);
-      return;
-    }
-
-    if (jobStatus.status === "not_found") {
-      setError("Job was not found.");
-      setIsPolling(false);
-      return;
-    }
-  } catch (err) {
-    console.error("POLLING ERROR:", err);
-
-    setError(
-      err instanceof Error
-        ? err.message
-        : "Lost connection to server."
-    );
-
-    setIsPolling(false);
-  }
-},
-1500
-);
 
 
     return () =>
@@ -222,6 +456,7 @@ async () => {
   }, [
     isPolling,
     jobId,
+    voyageSaved,
   ]);
 
 
@@ -230,6 +465,7 @@ async () => {
     setJobId(null);
     setStatus(null);
     setError(null);
+    setVoyageSaved(false);
   };
 
 
@@ -252,7 +488,10 @@ async () => {
       {!isPolling && !results && (
 
         <form
-          onSubmit={handleSubmit}
+          onSubmit={
+            handleSubmit
+          }
+
           className="space-y-6"
         >
 
@@ -270,16 +509,22 @@ async () => {
 
                   <span
                     key={tag}
+
                     className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-navy-700 text-gold-300 text-sm"
                   >
 
                     {tag}
 
+
                     <button
                       type="button"
+
                       onClick={() =>
-                        handleRemoveTag(tag)
+                        handleRemoveTag(
+                          tag
+                        )
                       }
+
                       className="text-gray-400 hover:text-red-400"
                     >
                       &times;
@@ -295,7 +540,10 @@ async () => {
 
             <input
               type="text"
-              value={tagInput}
+
+              value={
+                tagInput
+              }
 
               onChange={
                 (e) =>
@@ -325,7 +573,10 @@ async () => {
 
             <input
               type="text"
-              value={interests}
+
+              value={
+                interests
+              }
 
               onChange={
                 (e) =>
@@ -351,7 +602,10 @@ async () => {
 
             <input
               type="url"
-              value={githubUrl}
+
+              value={
+                githubUrl
+              }
 
               onChange={
                 (e) =>
@@ -428,41 +682,34 @@ async () => {
       )}
 
 
-      {!isPolling && error && (
-
-        <div className="py-8">
-
-          <p className="text-red-400">
-            {error}
-          </p>
-
-
-          <button
-            onClick={reset}
-
-            className="mt-4 px-4 py-2 border border-navy-600 text-gray-300 rounded-lg"
-          >
-            Try Again
-          </button>
-
-        </div>
-
-      )}
-
-
       {!isPolling && results && (
 
         <div className="space-y-6">
 
           <div className="flex items-center justify-between">
 
-            <h2 className="text-2xl font-bold text-gold-400">
-              Your Discoveries
-            </h2>
+            <div>
+
+              <h2 className="text-2xl font-bold text-gold-400">
+                Your Discoveries
+              </h2>
+
+
+              {voyageSaved && (
+
+                <p className="text-green-400 text-sm mt-1">
+                  Voyage saved successfully.
+                </p>
+
+              )}
+
+            </div>
 
 
             <button
-              onClick={reset}
+              onClick={
+                reset
+              }
 
               className="px-4 py-2 text-sm border border-navy-600 text-gray-300 rounded-lg"
             >
@@ -470,6 +717,15 @@ async () => {
             </button>
 
           </div>
+
+
+          {error && (
+
+            <p className="text-red-400">
+              {error}
+            </p>
+
+          )}
 
 
           {results.length === 0 ? (
@@ -481,11 +737,19 @@ async () => {
           ) : (
 
             results.map(
-              (idea, index) => (
+              (
+                idea,
+                index
+              ) => (
 
                 <IdeaCard
-                  key={index}
-                  idea={idea}
+                  key={
+                    index
+                  }
+
+                  idea={
+                    idea
+                  }
                 />
 
               )
@@ -594,10 +858,16 @@ function IdeaCard({
         <div className="space-y-2">
 
           {idea.evidence?.map(
-            (evidence, index) => (
+            (
+              evidence,
+              index
+            ) => (
 
               <div
-                key={index}
+                key={
+                  index
+                }
+
                 className="p-3 rounded-lg bg-navy-700/50"
               >
 
@@ -614,8 +884,12 @@ function IdeaCard({
                 {evidence.url && (
 
                   <a
-                    href={evidence.url}
+                    href={
+                      evidence.url
+                    }
+
                     target="_blank"
+
                     rel="noopener noreferrer"
 
                     className="text-xs text-gold-400 hover:text-gold-300"
