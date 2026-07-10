@@ -87,7 +87,7 @@ async def reddit_search(query: str, subreddits: list[str]) -> list[dict]:
                             "url": post_data.get("url", ""),
                         })
         return results
-    except Exception as e:
+    except Exception:
         # Gracefully handle network issues or API blockages
         return []
 
