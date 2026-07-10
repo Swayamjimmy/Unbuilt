@@ -6,30 +6,39 @@ from app.routers import ideas
 
 
 app = FastAPI(
-    title="IdeaForge API",
+    title="Unbuilt API",
+    version="1.0.0",
 )
+
 
 app.add_middleware(
     CORSMiddleware,
+
     allow_origins=[
         "http://localhost:3000",
+
+        # REPLACE WITH YOUR ACTUAL DEPLOYED FRONTEND URL
         "https://unbuilt-ten.vercel.app",
     ],
+
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+
+    allow_methods=[
+        "GET",
+        "POST",
+        "OPTIONS",
+    ],
+
+    allow_headers=[
+        "*",
+    ],
 )
 
-app.include_router(
-    ideas.router,
+
+app.include_router(ideas.router)
+
+
+handler = Mangum(
+    app,
+    lifespan="off",
 )
-
-
-@app.get("/")
-async def root():
-    return {
-        "message": "IdeaForge API",
-    }
-
-
-handler = Mangum(app)
