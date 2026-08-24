@@ -1,14 +1,14 @@
-# IdeaForge
+# Unbuilt
 
 > **Discover your next software project through real community demand.**
 
-IdeaForge is an AI-powered project discovery platform that helps developers move beyond generic project ideas and discover software opportunities grounded in problems people are actively discussing online.
+Unbuilt is an AI-powered project discovery platform that helps developers move beyond generic project ideas and discover software opportunities grounded in problems people are actively discussing online.
 
 Instead of asking an LLM:
 
 > *"Give me some project ideas for machine learning and web development."*
 
-IdeaForge takes a research-first approach:
+Unbuilt takes a research-first approach:
 
 1. Understands the developer's interests and preferred technologies.
 2. Generates targeted problem-oriented research queries.
@@ -29,8 +29,8 @@ The application combines a Next.js frontend, Supabase authentication and persist
 # Table of Contents
 
 * [The Problem](#the-problem)
-* [Why IdeaForge is Useful](#why-ideaforge-is-useful)
-* [How IdeaForge Works](#how-ideaforge-works)
+* [Why Unbuilt is Useful](#why-Unbuilt-is-useful)
+* [How Unbuilt Works](#how-Unbuilt-works)
 * [High-Level Architecture](#high-level-architecture)
 * [The Research Pipeline](#the-research-pipeline)
 
@@ -92,7 +92,7 @@ may generate ideas such as:
 
 These projects can demonstrate technical skills, but there is no evidence that anyone actually needs them.
 
-IdeaForge reverses this process.
+Unbuilt reverses this process.
 
 Instead of:
 
@@ -122,11 +122,11 @@ AI synthesizes solutions
 Concrete project ideas
 ```
 
-This makes IdeaForge a **problem discovery engine**, not simply an idea generator.
+This makes Unbuilt a **problem discovery engine**, not simply an idea generator.
 
 ---
 
-# Why IdeaForge is Useful
+# Why Unbuilt is Useful
 
 ## 1. It starts with evidence instead of imagination
 
@@ -136,7 +136,7 @@ However, plausibility is not the same as demand.
 
 An LLM can easily invent an interesting project that sounds useful but solves a problem nobody actually has.
 
-IdeaForge reduces this issue by collecting signals from communities where developers, founders, engineers, and users already discuss their problems.
+Unbuilt reduces this issue by collecting signals from communities where developers, founders, engineers, and users already discuss their problems.
 
 The final AI prompt explicitly instructs the system to use the supplied community signals as evidence and not invent Reddit or Hacker News URLs.
 
@@ -211,7 +211,7 @@ This means the LLM is used primarily for **synthesis and product ideation**, rat
 
 ---
 
-# How IdeaForge Works
+# How Unbuilt Works
 
 At a high level, the complete application works like this:
 
@@ -299,7 +299,7 @@ At a high level, the complete application works like this:
 
 # High-Level Architecture
 
-IdeaForge consists of several major layers.
+Unbuilt consists of several major layers.
 
 ## Client Layer
 
@@ -405,7 +405,7 @@ This state represents the complete lifecycle of a project discovery request.
 
 # The Research Pipeline
 
-The core of IdeaForge is its multi-stage research pipeline.
+The core of Unbuilt is its multi-stage research pipeline.
 
 ## 1. Scout
 
@@ -428,7 +428,7 @@ The Scout is deliberately deterministic and does not require an LLM request.
 
 ### Search Query Generation
 
-For every interest, IdeaForge generates problem-oriented queries.
+For every interest, Unbuilt generates problem-oriented queries.
 
 For example, if the interest is:
 
@@ -456,7 +456,7 @@ Instead of searching:
 machine learning
 ```
 
-IdeaForge searches for patterns that are more likely to reveal unmet needs:
+Unbuilt searches for patterns that are more likely to reveal unmet needs:
 
 ```text
 frustrating problem
@@ -468,7 +468,7 @@ repetitive workflow
 
 ### Subreddit Selection
 
-IdeaForge contains a lightweight mapping between technical interests and relevant communities.
+Unbuilt contains a lightweight mapping between technical interests and relevant communities.
 
 Examples include:
 
@@ -521,7 +521,7 @@ The application can perform authenticated Reddit searches using OAuth credential
 The flow is:
 
 ```text
-IdeaForge
+Unbuilt
     │
     ▼
 Reddit OAuth Token
@@ -1106,7 +1106,7 @@ Authentication is handled through Supabase OAuth with Google.
 
 ## Discover Page
 
-The Discover page is where the core IdeaForge workflow begins.
+The Discover page is where the core Unbuilt workflow begins.
 
 The user can provide:
 
@@ -1166,7 +1166,7 @@ results
 
 The Dashboard retrieves voyages from Supabase for the authenticated user and displays previous discoveries.
 
-This means IdeaForge does not treat idea generation as a disposable interaction.
+This means Unbuilt does not treat idea generation as a disposable interaction.
 
 Users can return to previous research and revisit generated project opportunities.
 
@@ -1349,7 +1349,7 @@ Currently:
 
 # AWS Architecture
 
-IdeaForge uses several AWS services.
+Unbuilt uses several AWS services.
 
 ## AWS Lambda
 
@@ -1951,7 +1951,7 @@ swayamjimmy-unbuilt/
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   ├── test_graph.py
-│   ├── ideaforge-aws-policy.json
+│   ├── Unbuilt-aws-policy.json
 │   │
 │   └── app/
 │       │
@@ -2107,7 +2107,7 @@ REDDIT_CLIENT_SECRET=your_reddit_client_secret
 AWS_REGION=ap-south-1
 
 # DynamoDB
-JOBS_TABLE_NAME=ideaforge-jobs
+JOBS_TABLE_NAME=Unbuilt-jobs
 
 # SQS
 JOBS_QUEUE_URL=your_sqs_queue_url
@@ -2270,7 +2270,7 @@ http://localhost:3000
 
 ## Research Before Generation
 
-The most important decision in IdeaForge is:
+The most important decision in Unbuilt is:
 
 ```text
 Research → Analyze → Generate
@@ -2356,7 +2356,7 @@ the architecture separates:
 
 # Future Improvements
 
-IdeaForge can be extended significantly.
+Unbuilt can be extended significantly.
 
 ## Better Demand Scoring
 
@@ -2488,7 +2488,7 @@ LLM
 Project Ideas
 ```
 
-IdeaForge looks like:
+Unbuilt looks like:
 
 ```text
 User Interests
@@ -2531,13 +2531,13 @@ The system uses:
 * Structured state.
 * AI synthesis.
 
-That combination makes IdeaForge both a useful application and a technically substantial engineering project.
+That combination makes Unbuilt both a useful application and a technically substantial engineering project.
 
 ---
 
 # Summary
 
-IdeaForge is an **AI-powered, evidence-driven project discovery platform**.
+Unbuilt is an **AI-powered, evidence-driven project discovery platform**.
 
 It helps developers discover software projects by researching real problems instead of relying entirely on generic AI suggestions.
 
