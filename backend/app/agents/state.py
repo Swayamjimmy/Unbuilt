@@ -13,5 +13,6 @@ class AgentState(TypedDict):
     user_interests: list[str]
     search_queries: list[str]
     raw_findings: list[dict]
+    tech_stack: list[str]
     analyzed_signals: list[dict]
     final_ideas: list[dict]

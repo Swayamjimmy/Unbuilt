@@ -77,6 +77,7 @@ async def process_job(
         "interests",
         [],
     )
+    tech_stack = message.get("tech_stack", [])
 
     print(
         "=" * 60,
@@ -97,6 +98,7 @@ async def process_job(
         f"INTERESTS: {interests}",
         flush=True,
     )
+    print(f"TECH STACK: {tech_stack}", flush=True)
 
     print(
         "=" * 60,
@@ -122,6 +124,7 @@ async def process_job(
 
         result = await run_idea_graph(
             user_interests=interests,
+            tech_stack=tech_stack,
         )
 
         ideas = result.get(

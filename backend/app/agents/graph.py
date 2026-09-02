@@ -99,9 +99,13 @@ async def run_idea_graph(
     Execute the idea generation graph.
     """
 
+    tech_stack = tech_stack or []
+
     initial_state: AgentState = {
         "user_interests":
             user_interests,
+
+        "tech_stack": tech_stack,
 
         "search_queries":
             [],
@@ -127,6 +131,7 @@ async def run_idea_graph(
         f"{user_interests}",
         flush=True,
     )
+    print(f"TECH STACK: {tech_stack}", flush=True)
 
 
     result = await idea_graph.ainvoke(

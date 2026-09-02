@@ -366,12 +366,17 @@ async def architect_node(
         ensure_ascii=False,
     )
 
+    tech_stack_text = json.dumps(state.get("tech_stack", []), ensure_ascii=False)
+
     prompt = f"""
 You are a senior product engineer identifying strong software
 portfolio project opportunities.
 
 USER INTERESTS:
 {interests_text}
+
+USER PREFERRED TECH STACK:
+{tech_stack_text}
 
 VALIDATED COMMUNITY SIGNALS:
 {signals_text}
@@ -399,11 +404,14 @@ Requirements:
    - developer tools
    - distributed systems
    when relevant to the user's interests.
+   
+5. STRONG REQUIREMENT: The recommended `tech_stack` for each project 
+   must heavily utilize the USER PREFERRED TECH STACK.
 
-5. Evidence must reference the supplied community signals only.
+6. Evidence must reference the supplied community signals only.
    Never invent a Reddit or Hacker News URL.
 
-6. Return ONLY valid JSON.
+7. Return ONLY valid JSON.
 
 Return this exact JSON structure:
 
