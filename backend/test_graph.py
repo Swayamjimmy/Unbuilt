@@ -12,7 +12,8 @@ async def main():
     print("="* 50)
 
     result = await run_idea_graph(
-        user_interests=["machine learning", "web development", "Python"]
+        user_interests=["machine learning", "web development", "Python"],
+        tech_stack=["React", "FastAPI", "PostgreSQL"]
     )
 
     print(f"\nSearch queries generated: {len(result['search_queries'])}")
