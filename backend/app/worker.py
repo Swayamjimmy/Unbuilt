@@ -5,7 +5,6 @@ import traceback
 
 import boto3
 
-
 AWS_REGION = os.getenv(
     "AWS_REGION",
     "ap-south-1",

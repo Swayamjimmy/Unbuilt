@@ -8,8 +8,12 @@ export default function Navigation() {
 
   return (
     <nav className="fixed left-0 top-0 h-full w-16 bg-navy-800 flex flex-col items-center py-6 gap-8 border-r border-navy-700">
-      {/* Ship wheel logo */}
-      <div className="text-gold-500 mb-4">
+    {/* Ship wheel logo */}
+      <Link 
+        href="/" 
+        className="text-gold-500 mb-4 hover:text-gold-400 hover:scale-105 transition-all focus:outline-none"
+        title="Home"
+      >
         <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
           <circle cx="12" cy="12" r="3" />
           <circle cx="12" cy="12" r="8" />
@@ -22,7 +26,7 @@ export default function Navigation() {
           <line x1="4.22" y1="19.78" x2="6.34" y2="17.66" />
           <line x1="17.66" y1="6.34" x2="19.78" y2="4.22" />
         </svg>
-      </div>
+      </Link>
 
       {/* Telescope - Discover */}
       <Link

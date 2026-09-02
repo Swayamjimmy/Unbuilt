@@ -1,6 +1,7 @@
 import asyncio
-from dotenv import load_dotenv
+
 from app.agents.graph import run_idea_graph
+from dotenv import load_dotenv
 
 # Load environment variables from .env
 load_dotenv()

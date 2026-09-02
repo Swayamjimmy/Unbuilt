@@ -2,12 +2,10 @@ import json
 import os
 from typing import Any
 
+from app.agents.state import AgentState
+from app.agents.tools import hackernews_search, reddit_search
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
-
-from app.agents.state import AgentState
-from app.agents.tools import reddit_search, hackernews_search
-
 
 load_dotenv()
 
@@ -164,7 +162,7 @@ async def scout_node(
                 reddit_results
             )
 
-        except Exception as error:
+        except Exception as error: # noqa: BLE001
             print(
                 f"REDDIT SEARCH FAILED "
                 f"query={query} "
@@ -181,7 +179,7 @@ async def scout_node(
                 hn_results
             )
 
-        except Exception as error:
+        except Exception as error: # noqa: BLE001
             print(
                 f"HN SEARCH FAILED "
                 f"query={query} "

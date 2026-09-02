@@ -1,15 +1,13 @@
-from langgraph.graph import (
-    StateGraph,
-    START,
-    END,
-)
-
-from app.agents.state import AgentState
-
 from app.agents.nodes import (
-    scout_node,
     analyst_node,
     architect_node,
+    scout_node,
+)
+from app.agents.state import AgentState
+from langgraph.graph import (
+    END,
+    START,
+    StateGraph,
 )
 
 
@@ -94,6 +92,7 @@ idea_graph = (
 
 async def run_idea_graph(
     user_interests: list[str],
+    tech_stack: list[str] | None = None,
 ) -> dict:
     """
     Execute the idea generation graph.

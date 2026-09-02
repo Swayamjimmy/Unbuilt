@@ -1,5 +1,6 @@
 from typing import TypedDict
 
+
 class AgentState(TypedDict):
     """Shared state container for the multi-agent graph.
 

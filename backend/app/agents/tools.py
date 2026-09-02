@@ -1,5 +1,6 @@
 
 import os
+
 import httpx
 
 REDDIT_TOKEN_URL = "https://www.reddit.com/api/v1/access_token"
@@ -87,7 +88,7 @@ async def reddit_search(query: str, subreddits: list[str]) -> list[dict]:
                             "url": post_data.get("url", ""),
                         })
         return results
-    except Exception:
+    except Exception: # noqa: BLE001
         # Gracefully handle network issues or API blockages
         return []
 
