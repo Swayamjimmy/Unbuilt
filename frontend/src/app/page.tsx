@@ -193,10 +193,10 @@ export default function Home() {
 
         <h1 className="text-5xl font-bold text-white mb-4">
 
-          Idea
+          Un
 
           <span className="text-gold-500">
-            Forge
+            built
           </span>
 
         </h1>
