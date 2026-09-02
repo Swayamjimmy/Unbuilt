@@ -3,8 +3,9 @@ import os
 import uuid
 
 import boto3
-from app.schemas.ideas import GenerateIdeasRequest, IdeaResponse
 from fastapi import APIRouter
+
+from app.schemas.ideas import GenerateIdeasRequest, IdeaResponse
 
 router = APIRouter()
 

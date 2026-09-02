@@ -1,14 +1,15 @@
+from langgraph.graph import (
+    END,
+    START,
+    StateGraph,
+)
+
 from app.agents.nodes import (
     analyst_node,
     architect_node,
     scout_node,
 )
 from app.agents.state import AgentState
-from langgraph.graph import (
-    END,
-    START,
-    StateGraph,
-)
 
 
 def build_graph() -> StateGraph:

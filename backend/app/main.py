@@ -1,7 +1,8 @@
-from app.routers import ideas
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
+
+from app.routers import ideas
 
 app = FastAPI(
     title="Unbuilt API",
