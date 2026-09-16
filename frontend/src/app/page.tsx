@@ -311,7 +311,7 @@ export default function Home() {
       <p className="mt-8 text-sm text-gray-500">
 
         Discover validated project ideas
-        backed by real community demand.
+        backed by real community demand (Reddit/Hacker News).
 
       </p>
 
