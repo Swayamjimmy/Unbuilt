@@ -6,7 +6,7 @@ import Navigation from '@/components/Navigation'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'IdeaForge - Discover Your Next Project',
+  title: 'Unbuilt - Discover Your Next Project',
   description: 'AI-powered project idea discovery engine',
 }
 
